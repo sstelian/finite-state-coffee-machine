@@ -1,9 +1,13 @@
 FSCM is a simple state machine that replicates the behavior of a coffee maker.
 
-Compile with:
-g++ coffee_machine.cpp -o main
+Linux and Windows compatible.
 
-Linux compatible only. (due to the use of termios.h)
+To setup compiler for Windows:
+	- download and install g++ compiler from https://sourceforge.net/projects/mingw/
+	- add "...\MinGW\bin" to the System variable Path
+	
+Compile with:
+	"g++ coffee_machine.cpp -o main" command
 
 Author: Stelian Saracut
 2022

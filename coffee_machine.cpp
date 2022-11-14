@@ -1,19 +1,29 @@
+// include common libraries
 #include <iostream>
 #include <thread>
 #include <stdio.h>
-#include <termios.h>
 #include <unistd.h>
 #include <fcntl.h>
 
-#define ACTION_DURATION 20
+#if defined (__linux__) // include Linux libraries
+  #include <chrono>
+  #include <termios.h>
+  using namespace std::this_thread;
+#elif defined (_WIN32) // include Windows libraries
+  #include <conio.h>
+  #include <windows.h>
+#else
+  #error "Platform not supported."
+#endif
 
+#define ACTION_DURATION 20
 using namespace std;
-using namespace std::this_thread;
+
 
 typedef enum
 {
   STATUS_OK,
-  STATUS_PENDING,
+  STATUS_PNDING,
   STATUS_FAILED
 } status_t;
 
@@ -26,32 +36,57 @@ typedef enum
   CLEANUP
 } state_t;
 
-// returns 1 if a key was pressed else returns 0
-int kbhit(void)
-{
-  struct termios oldt, newt;
-  int ch;
-  int oldf;
-
-  tcgetattr(STDIN_FILENO, &oldt);
-  newt = oldt;
-  newt.c_lflag &= ~(ICANON | ECHO);
-  tcsetattr(STDIN_FILENO, TCSANOW, &newt);
-  oldf = fcntl(STDIN_FILENO, F_GETFL, 0);
-  fcntl(STDIN_FILENO, F_SETFL, oldf | O_NONBLOCK);
-
-  ch = getchar();
-
-  tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
-  fcntl(STDIN_FILENO, F_SETFL, oldf);
-
-  if(ch != EOF)
+// Linux implementation for kbhit
+#if defined (__linux__)
+  int kbhit_linux()
   {
-    ungetc(ch, stdin);
-    return 1;
-  }
+    struct termios oldt, newt;
+    int ch;
+    int oldf;
 
-  return 0;
+    tcgetattr(STDIN_FILENO, &oldt);
+    newt = oldt;
+    newt.c_lflag &= ~(ICANON | ECHO);
+    tcsetattr(STDIN_FILENO, TCSANOW, &newt);
+    oldf = fcntl(STDIN_FILENO, F_GETFL, 0);
+    fcntl(STDIN_FILENO, F_SETFL, oldf | O_NONBLOCK);
+
+    ch = getchar();
+
+    tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
+    fcntl(STDIN_FILENO, F_SETFL, oldf);
+
+    if(ch != EOF)
+    {
+      ungetc(ch, stdin);
+      return 1;
+    }
+
+    return 0;
+  }
+#endif
+
+void sleepMs(int d)
+{
+  #if defined (__linux__) // call Linux implementation
+    sleep_for(std::chrono::milliseconds(d));
+  #elif defined (_WIN32) // call Windows implementation
+    Sleep(d);
+  #else
+    #error "Platform not supported."
+  #endif
+}
+
+
+int kbhitWrapper()
+{
+  #if defined (__linux__) // call Linux implementation
+    return kbhit_linux();
+  #elif defined (_WIN32) // call Windows implementation
+    return _kbhit();
+  #else
+    #error "Platform not supported."
+  #endif
 }
 
 // state functions
@@ -63,9 +98,9 @@ status_t preheat()
 
   for (int i = 0; i < ACTION_DURATION; i++)
   {
-    sleep_for(100ms);
+    sleepMs(100);
 
-    if (!kbhit())
+    if (!kbhitWrapper())
     {
       continue;
     }
@@ -84,13 +119,13 @@ status_t preheat()
 
 status_t idle()
 {
-  status_t status = STATUS_PENDING;
+  status_t status = STATUS_PNDING;
 
   cout << "Idling. Press C to make a coffee." << endl;
 
   while (1)
   {
-    if (!kbhit())
+    if (!kbhitWrapper())
     {
       continue;
     }
@@ -115,9 +150,9 @@ status_t heat()
 
   for (int i = 0; i < ACTION_DURATION; i++)
   {
-    sleep_for(100ms);
+    sleepMs(100);
 
-    if (!kbhit())
+    if (!kbhitWrapper())
     {
       continue;
     }
@@ -142,9 +177,9 @@ status_t enablePump()
 
   for (int i = 0; i < ACTION_DURATION; i++)
   {
-    sleep_for(100ms);
+    sleepMs(100);
 
-    if (!kbhit())
+    if (!kbhitWrapper())
     {
       continue;
     }
@@ -169,9 +204,9 @@ status_t cleanup()
 
   for (int i = 0; i < ACTION_DURATION; i++)
   {
-    sleep_for(100ms);
+    sleepMs(100);
 
-    if (!kbhit())
+    if (!kbhitWrapper())
     {
       continue;
     }
